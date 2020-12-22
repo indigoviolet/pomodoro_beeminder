@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "pomodoro_beeminder"
 version = "0.1.0"
-description = ""
+description = "Beeminder integration for Time++ Pomodoro gnome extension"
 authors = ["Venky Iyer <indigoviolet@gmail.com>"]
 
 [tool.poetry.dependencies]
@@ -10,6 +10,8 @@ aiorun = "^2020.11.1"
 pysqlitedb = {path = "../pysqlitedb", develop=true}
 monitored-subprocess = {path = "../monitored_subprocess", develop=true}
 fire = "^0.3.1"
+more-itertools = "^8.6.0"
+requests = "^2.25.1"
 
 [tool.poetry.dev-dependencies]
 mypy = "^0.790"
@@ -21,3 +23,4 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 tailer = "pomodoro_beeminder.tailer:main"
+post = "pomodoro_beeminder.post:main"

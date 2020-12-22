@@ -1,35 +1,60 @@
 
-* supervisor
+* Pomodoro Beeminder
 
-  - installed with apt
-  - fixed permissions error by
+  This is a [Beeminder](https://www.beeminder.com/) integration for
+  the [Time++ Pomodoro Gnome extension](https://github.com/zagortenay333/timepp__gnome/)
 
-    #+BEGIN_SRC conf
-      [unix_http_server]
-      file=/var/run/supervisor.sock   ; (the path to the socket file)
-      chmod=0766                       ; socket file mode (default 0700)
-    #+END_SRC
+#+BEGIN_SRC shell-script
+
+# https://www.beeminder.com/api/v1/auth_token.json
+export BEEMINDER_AUTH='{"username":"alice","auth_token":"something"}'
+
+#+END_SRC
 
 
-* Design
+** Data file
 
-** Tailer
-   script that continually tails
+   ~$HOME/.local/share/pomodoro_beeminder/db.sqlite~
 
-   ~gdbus monitor --session --dest org.gnome.Shell --object-path
-   /timepp/zagortenay333/Pomodoro~
+* Working notes
 
-   and logs into a sqlite db
+** supervisor
 
-   why:
+   - installed with apt
+   - fixed permissions error by
 
-   - easy to query
-   - structured
-   - don't need to make different files for each window etc.
+     #+BEGIN_SRC conf
+       [unix_http_server]
+       file=/var/run/supervisor.sock   ; (the path to the socket file)
+       chmod=0766                       ; socket file mode (default 0700)
+     #+END_SRC
 
-** Beeminder
 
-   script that runs periodically, queries the time spent in pomodoro
-   state in the interval, and logs to beeminder
+** Design
 
-   - track last run in the same db? multiple writers?
+*** DONE Tailer
+    script that continually tails
+
+    ~gdbus monitor --session --dest org.gnome.Shell --object-path
+    /timepp/zagortenay333/Pomodoro~
+
+    and logs into a sqlite db
+
+    why:
+
+    - easy to query
+    - structured
+    - don't need to make different files for each window etc.
+
+*** Beeminder
+
+    script that runs periodically*, queries the time spent in pomodoro
+    state in the interval, and logs to beeminder
+
+    - track last run in the same db (since we need to query it anyway)
+
+    - periodic runs: we'll do this with cron - supervisord can do a
+      limited version of periodic tasks if you write an event listener
+      that listens for TICK_60 for example, but this seems convoluted
+      and unnecessary. We just need to make sure the beeminder script
+      can track last success

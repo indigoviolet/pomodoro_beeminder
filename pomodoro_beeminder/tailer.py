@@ -2,13 +2,14 @@ import asyncio
 import re
 import shlex
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Optional
 
 import aiorun
 import fire
 from monitored_subprocess import MonitoredSubprocess
-from pysqlitedb import DB, Column, Table
-from snoop import pp
+from pysqlitedb import DB
+
+from .db import get_db, get_default_db_path
 
 OBJECT_PATH = "/timepp/zagortenay333/Pomodoro"
 
@@ -45,20 +46,6 @@ async def tail_gdbus(proc: asyncio.subprocess.Process, db: DB):
             )
 
 
-def get_db(db_path: Path):
-    tables = [
-        Table(
-            "pomo_state_changes",
-            columns=[
-                Column("state", "TEXT NOT NULL"),
-                Column("timestamp", "TEXT NOT NULL"),
-                Column("created_at", "TEXT NOT NULL"),
-            ],
-        )
-    ]
-    return DB.get(db_path, tables=tables)
-
-
 async def mainloop(db_path: Path) -> None:
     try:
         gdbus_proc = await start_gdbus()
@@ -68,13 +55,11 @@ async def mainloop(db_path: Path) -> None:
         await gdbus_proc.stop()
 
 
-def syncmain(output_file: str):
-    aiorun.run(mainloop(Path(output_file)), stop_on_unhandled_errors=True)
+def syncmain(db_file: Optional[Path] = None):
+    db_path = Path(db_file) if db_file is not None else get_default_db_path()
+    aiorun.run(mainloop(db_path), stop_on_unhandled_errors=True)
 
 
+# Entry point: use `poetry run tailer` to execute
 def main():
-    fire.Fire(syncmain)
-
-
-if __name__ == "__main__":
     fire.Fire(syncmain)
