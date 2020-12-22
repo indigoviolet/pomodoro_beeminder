@@ -1,0 +1,35 @@
+
+* supervisor
+
+  - installed with apt
+  - fixed permissions error by
+
+    #+BEGIN_SRC conf
+      [unix_http_server]
+      file=/var/run/supervisor.sock   ; (the path to the socket file)
+      chmod=0766                       ; socket file mode (default 0700)
+    #+END_SRC
+
+
+* Design
+
+** Tailer
+   script that continually tails
+
+   ~gdbus monitor --session --dest org.gnome.Shell --object-path
+   /timepp/zagortenay333/Pomodoro~
+
+   and logs into a sqlite db
+
+   why:
+
+   - easy to query
+   - structured
+   - don't need to make different files for each window etc.
+
+** Beeminder
+
+   script that runs periodically, queries the time spent in pomodoro
+   state in the interval, and logs to beeminder
+
+   - track last run in the same db? multiple writers?
