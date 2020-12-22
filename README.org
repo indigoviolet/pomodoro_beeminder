@@ -16,12 +16,20 @@ export BEEMINDER_AUTH='{"username":"alice","auth_token":"something"}'
 
    ~$HOME/.local/share/pomodoro_beeminder/db.sqlite~
 
-* Working notes
+
+* Config
+
+** Install with pipx
+
+   #+BEGIN_SRC shell-script
+     pipx install git+https://github.com/indigoviolet/pomodoro_beeminder
+   #+END_SRC
 
 ** supervisor
 
    - installed with apt
-   - fixed permissions error by
+
+   - fixed permissions error by changing conf: ~/etc/supervisor/supervisord.conf~
 
      #+BEGIN_SRC conf
        [unix_http_server]
@@ -29,32 +37,54 @@ export BEEMINDER_AUTH='{"username":"alice","auth_token":"something"}'
        chmod=0766                       ; socket file mode (default 0700)
      #+END_SRC
 
+     followed by ~supervisord reread~ or ~sudo service supervisor restart~
 
-** Design
+   - Program conf
 
-*** DONE Tailer
-    script that continually tails
+     #+BEGIN_SRC conf
 
-    ~gdbus monitor --session --dest org.gnome.Shell --object-path
-    /timepp/zagortenay333/Pomodoro~
+     [program:pomodoro_beeminder_tailer]
+     command="/home/venky/.local/bin/pomo_tailer"
+     user=venky
+     environment=HOME="/home/venky",BEEMINDER_AUTH='...'
 
-    and logs into a sqlite db
+     #+END_SRC
 
-    why:
+   - Check status: ~supervisorctl status~
 
-    - easy to query
-    - structured
-    - don't need to make different files for each window etc.
+*** crontab
 
-*** Beeminder
+* Design
 
-    script that runs periodically*, queries the time spent in pomodoro
-    state in the interval, and logs to beeminder
+** DONE Tailer
+   script that continually tails
 
-    - track last run in the same db (since we need to query it anyway)
+   ~gdbus monitor --session --dest org.gnome.Shell --object-path
+   /timepp/zagortenay333/Pomodoro~
 
-    - periodic runs: we'll do this with cron - supervisord can do a
-      limited version of periodic tasks if you write an event listener
-      that listens for TICK_60 for example, but this seems convoluted
-      and unnecessary. We just need to make sure the beeminder script
-      can track last success
+   and logs into a sqlite db
+
+   why:
+
+   - easy to query
+   - structured
+   - don't need to make different files for each window etc.
+
+** Beeminder
+
+   script that runs periodically*, queries the time spent in pomodoro
+   state in the interval, and logs to beeminder
+
+   - track last run in the same db (since we need to query it anyway)
+
+   - periodic runs: we'll do this with cron - supervisord can do a
+     limited version of periodic tasks if you write an event listener
+     that listens for TICK_60 for example, but this seems convoluted
+     and unnecessary. We just need to make sure the beeminder script
+     can track last success
+
+
+* Future
+
+  - Handle gdbus failures through backoff or activity monitoring
+  - Terminate pomos on inactivity (but it complicates pomo_time computation)
