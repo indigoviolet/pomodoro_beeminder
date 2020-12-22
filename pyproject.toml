@@ -7,11 +7,11 @@ authors = ["Venky Iyer <indigoviolet@gmail.com>"]
 [tool.poetry.dependencies]
 python = "^3.9"
 aiorun = "^2020.11.1"
-pysqlitedb = {path = "../pysqlitedb", develop=true}
-monitored-subprocess = {path = "../monitored_subprocess", develop=true}
 fire = "^0.3.1"
 more-itertools = "^8.6.0"
 requests = "^2.25.1"
+monitored-subprocess = {git = "https://github.com/indigoviolet/monitored_subprocess"}
+pysqlitedb = {git = "https://github.com/indigoviolet/pysqlitedb"}
 
 [tool.poetry.dev-dependencies]
 mypy = "^0.790"
@@ -22,5 +22,5 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-tailer = "pomodoro_beeminder.tailer:main"
-post = "pomodoro_beeminder.post:main"
+pomo_tailer = "pomodoro_beeminder.tailer:main"
+pomo_poster = "pomodoro_beeminder.post:main"
