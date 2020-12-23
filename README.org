@@ -42,17 +42,21 @@ export BEEMINDER_AUTH='{"username":"alice","auth_token":"something"}'
    - Program conf
 
      #+BEGIN_SRC conf
-
-     [program:pomodoro_beeminder_tailer]
-     command="/home/venky/.local/bin/pomo_tailer"
-     user=venky
-     environment=HOME="/home/venky",BEEMINDER_AUTH='...'
+       [program:pomodoro_beeminder_tailer]
+       command="/home/venky/.local/bin/pomo_tailer"
+       user=venky
+       environment=HOME="/home/venky"
+       redirect_stderr=true
 
      #+END_SRC
 
    - Check status: ~supervisorctl status~
 
-*** crontab
+** crontab
+#+BEGIN_SRC shell-script
+0 10-22 * * * env BEEMINDER_AUTH='{"username":"...","auth_token":"..."}' /home/venky/.local/bin/pomo_poster --goal pomo 2>&1 >> /tmp/pomo_poster.log
+#+END_SRC
+
 
 * Design
 

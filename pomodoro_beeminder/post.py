@@ -10,10 +10,11 @@ import pytz
 import requests
 from more_itertools import windowed
 from pysqlitedb import DB
-from rich import print
+from rich.console import Console
 
 from .db import get_db, get_default_db_path
 
+console = Console()
 PACIFIC = pytz.timezone("America/Los_Angeles")
 
 
@@ -91,7 +92,7 @@ def post_to_beeminder(goal: str, pomo_secs: float, posted_at: datetime):
     )
 
     pomo_mins = pomo_secs / 60.0
-    print(f"Posting to beeminder: [green]{pomo_mins}[/green] mins")
+    console.log(f"Posting to beeminder: [green]{pomo_mins}[/green] mins")
 
     # https://api.beeminder.com/#postdata
     response = requests.post(
@@ -127,7 +128,7 @@ def post(goal: str, db_file: Optional[str] = None):
                 # would only be handled on ending)
                 db.insert_row("beeminder_posts", {"posted_at": posted_at})
             else:
-                print("[red]No pomo time[/red]")
+                console.log("[red]No pomo time[/red]")
 
         except Exception as e:
             db.insert_row("beeminder_posts", {"posted_at": posted_at, "error": str(e)})

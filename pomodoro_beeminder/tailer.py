@@ -10,7 +10,9 @@ import backoff
 import fire
 from monitored_subprocess import MonitoredSubprocess
 from pysqlitedb import DB
-from rich import print
+from rich.console import Console
+
+console = Console()
 
 from .db import get_db, get_default_db_path
 
@@ -29,7 +31,7 @@ def get_gnome_shell_pid() -> str:
             ["pidof", "-s", "gnome-shell"], check=True, capture_output=True
         )
     except subprocess.CalledProcessError as e:
-        print(f"[red]pidof gnome-shell raised (will retry):[/red] {e}")
+        console.log(f"[red]pidof gnome-shell raised (will retry):[/red] {e}")
         raise
     return proc.stdout.decode("utf-8").strip()
 
@@ -49,7 +51,7 @@ def get_dbus_address() -> str:
 async def start_gdbus() -> MonitoredSubprocess:
     dbus_address = get_dbus_address()
     gdbus_args = f"monitor --dest org.gnome.Shell --object-path {OBJECT_PATH} --address {dbus_address}"
-    print(f"Starting gdbus with args [green]{gdbus_args}[/green]")
+    console.log(f"Starting gdbus with args [green]{gdbus_args}[/green]")
     proc = MonitoredSubprocess(
         "gdbus",
         await asyncio.create_subprocess_exec(
@@ -72,7 +74,7 @@ async def tail_gdbus(proc: asyncio.subprocess.Process, db: DB):
                 tablename="pomo_state_changes",
                 values={"state": state, "timestamp": db.utcnow()},
             )
-            print(f"gdbus event [green]{state}[/green]")
+            console.log(f"gdbus event [green]{state}[/green]")
 
 
 async def mainloop(db_path: Path) -> None:
@@ -83,6 +85,7 @@ async def mainloop(db_path: Path) -> None:
                 await asyncio.gather(tail_gdbus(gdbus_proc.proc, db), gdbus_proc.wait())
         except asyncio.CancelledError:
             await gdbus_proc.stop()
+            console.log("[red]Exiting[/red]")
             break
 
 
