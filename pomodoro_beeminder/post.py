@@ -3,8 +3,9 @@ import os
 import sqlite3
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import Generator, List, Optional, Tuple
 
+import dateparser
 import fire
 import pytz
 import requests
@@ -16,6 +17,7 @@ from .db import get_db, get_default_db_path
 
 console = Console()
 PACIFIC = pytz.timezone("America/Los_Angeles")
+UTC = pytz.timezone("UTC")
 
 
 def get_last_success_timestamp(db: DB) -> Optional[datetime]:
@@ -35,7 +37,7 @@ def get_last_success_timestamp(db: DB) -> Optional[datetime]:
 
 def get_pomo_secs_in_interval(
     start_ts: Optional[datetime], end_ts: datetime, db: DB
-) -> float:
+) -> Generator[Tuple[datetime, float], None, None]:
 
     start_ts = start_ts or datetime.utcfromtimestamp(0)
     events: List[sqlite3.Row] = db.execute(
@@ -65,20 +67,18 @@ def get_pomo_secs_in_interval(
     else:
         spanning_events = []
 
-    pomo_secs = 0.0
     for prev, curr in windowed(spanning_events + events, 2):
         if prev is None or curr is None:
             break
         if prev["state"] == "POMO":
-            interval = datetime.fromisoformat(
-                curr["timestamp"]
-            ) - datetime.fromisoformat(prev["timestamp"])
-            pomo_secs += interval.total_seconds()
+            prev_time, curr_time = [
+                datetime.fromisoformat(t["timestamp"]) for t in (prev, curr)
+            ]
+            interval = (curr_time - prev_time).total_seconds()
+            yield (curr_time, interval)
 
-    return pomo_secs
 
-
-def post_to_beeminder(goal: str, pomo_secs: float, posted_at: datetime):
+def post_to_beeminder(goal: str, ts: datetime, pomo_secs: float, posted_at: datetime):
     try:
         auth = json.loads(os.environ["BEEMINDER_AUTH"])
     except (KeyError, json.decoder.JSONDecodeError) as e:
@@ -99,10 +99,10 @@ def post_to_beeminder(goal: str, pomo_secs: float, posted_at: datetime):
         create_datapoint_url,
         data={
             "auth_token": auth["auth_token"],
-            "timestamp": posted_at.timestamp(),
-            "comment": str(posted_at.astimezone(PACIFIC)),
+            "timestamp": ts.timestamp(),
+            "comment": f"{str(ts.astimezone(PACIFIC))} Posted at {str(posted_at.astimezone(PACIFIC))}",
             "value": pomo_mins,
-            "requestid": f"{user}-{goal}-{posted_at}",
+            "requestid": f"{user}-{goal}-{ts}-{posted_at}",
         },
     )
     if response.ok:
@@ -111,24 +111,33 @@ def post_to_beeminder(goal: str, pomo_secs: float, posted_at: datetime):
         response.raise_for_status()
 
 
-def post(goal: str, db_file: Optional[str] = None):
+def post(goal: str, since: Optional[str] = None, db_file: Optional[str] = None):
     db_path = Path(db_file) if db_file is not None else get_default_db_path()
 
     with get_db(db_path=db_path) as db:
         posted_at = db.utcnow()
 
         try:
-            last_success = get_last_success_timestamp(db)
-            pomo_secs = get_pomo_secs_in_interval(last_success, posted_at, db)
-            if pomo_secs > 0:
-                post_to_beeminder(goal, pomo_secs, posted_at)
-
-                # We don't want to mark as posted for 0.0 pomo_secs,
-                # because then we will miss an ongoing pomo (which
-                # would only be handled on ending)
-                db.insert_row("beeminder_posts", {"posted_at": posted_at})
+            if since is not None:
+                start_time = dateparser.parse(
+                    since,
+                    languages=["en"],
+                    settings={"TIMEZONE": "America/Los_Angeles"},
+                )
+                assert start_time is not None, f"{since=} is parseable"
+                start_time = start_time.astimezone(UTC)
             else:
-                console.log("[red]No pomo time[/red]")
+                start_time = get_last_success_timestamp(db)
+            for ts, pomo_secs in get_pomo_secs_in_interval(start_time, posted_at, db):
+                console.log(f"{str(ts)} {pomo_secs=}")
+
+                if pomo_secs > 0:
+                    post_to_beeminder(goal, ts, pomo_secs, posted_at)
+
+            # We don't want to mark as posted for 0.0 pomo_secs,
+            # because then we will miss an ongoing pomo (which
+            # would only be handled on ending)
+            db.insert_row("beeminder_posts", {"posted_at": posted_at})
 
         except Exception as e:
             db.insert_row("beeminder_posts", {"posted_at": posted_at, "error": str(e)})

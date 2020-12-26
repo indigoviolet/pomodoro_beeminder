@@ -15,6 +15,7 @@ pysqlitedb = {git = "https://github.com/indigoviolet/pysqlitedb"}
 snoop = "^0.2.5"
 backoff = "^1.10.0"
 rich = "^9.5.1"
+dateparser = "^1.0.0"
 
 [tool.poetry.dev-dependencies]
 mypy = "^0.790"
