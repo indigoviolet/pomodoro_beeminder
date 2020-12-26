@@ -44,7 +44,7 @@ def get_pomo_secs_in_interval(
         """
         SELECT state, timestamp
         FROM pomo_state_changes
-        WHERE timestamp >= :start_ts AND timestamp <= :end_ts
+        WHERE timestamp >= :start_ts AND timestamp < :end_ts
         ORDER BY timestamp ASC
         """,
         {"start_ts": start_ts, "end_ts": end_ts},
@@ -58,7 +58,7 @@ def get_pomo_secs_in_interval(
             """
             SELECT state, timestamp
             FROM pomo_state_changes
-            WHERE timestamp <= :first_event_ts
+            WHERE timestamp < :first_event_ts
             ORDER BY timestamp DESC
             LIMIT 1
             """,
