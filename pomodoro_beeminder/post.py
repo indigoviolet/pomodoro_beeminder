@@ -111,7 +111,12 @@ def post_to_beeminder(goal: str, ts: datetime, pomo_secs: float, posted_at: date
         response.raise_for_status()
 
 
-def post(goal: str, since: Optional[str] = None, db_file: Optional[str] = None):
+def post(
+    goal: str,
+    since: Optional[str] = None,
+    db_file: Optional[str] = None,
+    dry_run: bool = False,
+):
     db_path = Path(db_file) if db_file is not None else get_default_db_path()
 
     with get_db(db_path=db_path) as db:
@@ -129,18 +134,22 @@ def post(goal: str, since: Optional[str] = None, db_file: Optional[str] = None):
             else:
                 start_time = get_last_success_timestamp(db)
             for ts, pomo_secs in get_pomo_secs_in_interval(start_time, posted_at, db):
-                console.log(f"{str(ts)} {pomo_secs=}")
+                console.log(f"{ts=} {pomo_secs=} {posted_at=}")
 
-                if pomo_secs > 0:
+                if not dry_run and pomo_secs > 0:
                     post_to_beeminder(goal, ts, pomo_secs, posted_at)
 
-            # We don't want to mark as posted for 0.0 pomo_secs,
-            # because then we will miss an ongoing pomo (which
-            # would only be handled on ending)
-            db.insert_row("beeminder_posts", {"posted_at": posted_at})
+            if not dry_run:
+                # We don't want to mark as posted for 0.0 pomo_secs,
+                # because then we will miss an ongoing pomo (which
+                # would only be handled on ending)
+                db.insert_row("beeminder_posts", {"posted_at": posted_at})
 
         except Exception as e:
-            db.insert_row("beeminder_posts", {"posted_at": posted_at, "error": str(e)})
+            if not dry_run:
+                db.insert_row(
+                    "beeminder_posts", {"posted_at": posted_at, "error": str(e)}
+                )
             raise
 
 
